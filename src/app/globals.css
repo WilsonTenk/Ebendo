@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+/* Placeholder brand colours until the logo/branding is done. */
+@theme {
+  --color-brand: #0f5c4d;
+  --color-brand-dark: #0a4238;
+  --color-accent: #f2a900;
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: #fafaf9;
+  color: #1c1917;
+}

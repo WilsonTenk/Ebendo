@@ -10,6 +10,8 @@ P="docker exec -i ebendo-sqltest psql -U postgres -d ebendo -v ON_ERROR_STOP=1 -
 $P < supabase/tests/00_supabase_stubs.sql
 $P < supabase/migrations/0001_init.sql
 $P < supabase/migrations/0002_cash_and_store_credit.sql
+$P < supabase/migrations/0003_product_photos.sql
+$P < supabase/migrations/0004_server_role_grants.sql
 $P < supabase/tests/money_paths.sql      # ends with "ALL CHECKS PASSED"
 docker rm -f ebendo-sqltest
 ```

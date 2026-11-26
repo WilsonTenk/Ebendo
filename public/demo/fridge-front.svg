@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><title>Sample: fridge, front</title>
+<ellipse cx="300" cy="560" rx="150" ry="14" fill="#1A1714" opacity=".12"/>
+<rect x="190" y="60" width="220" height="150" rx="16" fill="#fff" stroke="#D9D1C4" stroke-width="3"/>
+<rect x="190" y="218" width="220" height="330" rx="16" fill="#fff" stroke="#D9D1C4" stroke-width="3"/>
+<rect x="378" y="95" width="11" height="80" rx="5.5" fill="#1A1714"/><rect x="378" y="250" width="11" height="140" rx="5.5" fill="#1A1714"/>
+<rect x="215" y="240" width="44" height="8" rx="4" fill="#E7E0D5"/>
+<rect x="210" y="548" width="26" height="12" rx="3" fill="#1A1714"/><rect x="364" y="548" width="26" height="12" rx="3" fill="#1A1714"/>
+<text x="300" y="590" font-family="Inter,Arial" font-size="18" text-anchor="middle" fill="#8A8178">Front (sample drawing)</text></svg>

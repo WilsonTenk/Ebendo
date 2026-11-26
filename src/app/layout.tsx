@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import Link from "next/link";
+import { Bricolage_Grotesque, Inter } from "next/font/google";
+import { isDemo } from "@/lib/catalog";
 import "./globals.css";
 
-const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
+const bricolage = Bricolage_Grotesque({ variable: "--font-bricolage", subsets: ["latin"], axes: ["opsz"] });
 
 export const metadata: Metadata = {
   title: { default: "Ebendo — Pay small small", template: "%s · Ebendo" },
@@ -13,29 +14,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} min-h-screen font-sans antialiased flex flex-col`}>
-        <header className="border-b border-stone-200 bg-white">
-          <nav className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4">
-            <Link href="/" className="text-xl font-bold text-brand">
-              Ebendo
-            </Link>
-            <div className="flex items-center gap-5 text-sm">
-              <Link href="/#how-it-works" className="hover:text-brand">How it works</Link>
-              <Link href="/plan" className="rounded-lg bg-brand px-4 py-2 text-white hover:bg-brand-dark">
-                Track my plan
-              </Link>
-            </div>
-          </nav>
-        </header>
-        <div className="flex-1">{children}</div>
-        <footer className="border-t border-stone-200 bg-white">
-          <div className="mx-auto max-w-6xl px-4 py-8 text-sm text-stone-500">
-            <p className="font-medium text-stone-700">Ebendo Blessing Supply Enterprise</p>
-            <p>Behind Accra Brewery, Graphic Road, Accra</p>
-            <p className="mt-2">© {new Date().getFullYear()} Ebendo. Items are released after full payment.</p>
+    <html lang="en" className={`${inter.variable} ${bricolage.variable}`}>
+      <body className={`flex min-h-screen flex-col font-sans antialiased`}>
+        {isDemo && (
+          <div className="bg-amber-100 px-4 py-1 text-center text-xs text-amber-900">
+            Preview mode — showing sample data
           </div>
-        </footer>
+        )}
+        {children}
       </body>
     </html>
   );

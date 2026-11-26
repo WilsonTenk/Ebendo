@@ -1,14 +1,53 @@
 @import "tailwindcss";
 
-/* Placeholder brand colours until the logo/branding is done. */
+/*
+ * Ebendo design tokens (from the UI board, "Design direction").
+ * One accent only: Ebendo orange. Ink for everything else. Warm paper background.
+ * Rule: orange = money moves; ink = everything else. No gradients.
+ */
 @theme {
-  --color-brand: #0f5c4d;
-  --color-brand-dark: #0a4238;
-  --color-accent: #f2a900;
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --color-brand: #c8440f;       /* Ebendo orange */
+  --color-brand-dark: #a8380b;
+  --color-brand-soft: #f8e6dc;  /* light orange tag background */
+  --color-accent: #f49a6c;      /* orange on dark backgrounds */
+  --color-ink: #1a1714;
+  --color-paper: #faf7f2;
+  --color-line: #e7e0d5;
+  --color-tile: #efe9df;        /* photo placeholder */
+  --color-credit: #5b3f8c;      /* store credit only */
+  --color-credit-soft: #eee9f6;
+
+  /* Warm the whole stone scale so existing utilities match the board. */
+  --color-stone-50: #faf7f2;
+  --color-stone-100: #efe9df;
+  --color-stone-200: #e7e0d5;
+  --color-stone-300: #d9d1c4;
+  --color-stone-400: #8a8178;
+  --color-stone-500: #6b645c;
+  --color-stone-600: #57504a;
+  --color-stone-700: #3f3a35;
+  --color-stone-800: #2a2622;
+  --color-stone-900: #1a1714;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-inter), ui-sans-serif, sans-serif;
+}
+
+@keyframes fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }
 
 body {
-  background: #fafaf9;
-  color: #1c1917;
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Headings use the display face, as on the board. */
+h1, h2 {
+  font-family: var(--font-display);
 }

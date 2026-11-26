@@ -18,3 +18,18 @@ export const rules = {
 };
 
 export const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+/**
+ * The shop's public details. TODO(client, #16): confirm the phone/WhatsApp
+ * number and opening hours — until then the site shows "[to confirm]".
+ */
+export const shop = {
+  name: "Ebendo Blessing Supply Enterprise",
+  address: ["Behind Accra Brewery Ltd", "Graphic Road, Accra"],
+  gps: "GA-138-2791", // Ghana Post GPS
+  /** What Google Maps searches for, for the map and "Get directions". */
+  mapQuery: "Accra Brewery, Graphic Road, Accra",
+  phone: null as string | null, // e.g. "+233 24 000 0000"
+  whatsapp: null as string | null, // e.g. "233240000000" (digits only, for wa.me links)
+  hours: null as [days: string, time: string][] | null,
+};

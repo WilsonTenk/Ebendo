@@ -4,6 +4,14 @@ import { isAdminEmail } from "@/lib/admin-emails";
 
 /** Guards /admin: refreshes the Supabase session and requires an ADMIN_EMAILS login. */
 export async function middleware(req: NextRequest) {
+  // Local design preview: no Supabase configured and not a production build -> show admin with sample data.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NODE_ENV !== "production") {
+    return NextResponse.next();
+  }
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    return new NextResponse("Admin is not configured", { status: 503 });
+  }
+
   let res = NextResponse.next({ request: req });
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

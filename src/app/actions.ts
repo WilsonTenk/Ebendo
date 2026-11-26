@@ -3,7 +3,9 @@
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { rules, siteUrl } from "@/lib/config";
-import { cedisToPesewas } from "@/lib/money";
+import { isDemo } from "@/lib/catalog";
+import { cedisToPesewas, formatGHS } from "@/lib/money";
+import { DEMO_PENDING_REF } from "@/lib/plan-data";
 import { initializeTransaction } from "@/lib/paystack";
 import {
   balance,
@@ -17,7 +19,7 @@ import {
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 const fail = (path: string, msg: string): never =>
-  redirect(`${path}?error=${encodeURIComponent(msg)}`);
+  redirect(`${path}${path.includes("?") ? "&" : "?"}error=${encodeURIComponent(msg)}`);
 
 const startSchema = z.object({
   productId: z.string().uuid(),
@@ -26,19 +28,25 @@ const startSchema = z.object({
   phone: z.string(),
   email: z.union([z.literal(""), z.string().trim().email("Enter a valid email or leave it empty")]),
   months: z.coerce.number().int(),
-  deposit: z.string(),
 });
 
-/** Customer picks a product, a plan length and a first payment, then goes to Paystack. */
+/**
+ * Start a plan, step 2 of 3 ("Your details"): save the customer and create the
+ * plan, waiting for its first payment. Step 3 (/plan/[ref]/pay) takes the
+ * first payment by MoMo, card or store credit. Unpaid plans are dropped after 48 hours.
+ */
 export async function startPlan(formData: FormData) {
   const parsed = startSchema.safeParse(Object.fromEntries(formData));
-  const back = `/products/${formData.get("slug") ?? ""}`;
+  const back = `/start/${formData.get("slug") ?? ""}?months=${encodeURIComponent(String(formData.get("months") ?? ""))}`;
   if (!parsed.success) fail(back, parsed.error!.issues[0].message);
   const f = parsed.data!;
 
   const phone = normalizeGhPhone(f.phone);
-  if (!phone) fail(back, "Enter a valid Ghana phone number");
+  if (!phone) fail(back, "Enter all 10 digits of a Ghana number, e.g. 024 000 0000");
   if (!(rules.durations as readonly number[]).includes(f.months)) fail(back, "Pick a plan length of 1 to 6 months");
+
+  // Preview mode has no database: continue to a sample plan's first-payment step.
+  if (isDemo) redirect(`/plan/${DEMO_PENDING_REF}/pay`);
 
   const db = supabaseAdmin();
   const { data: product } = await db
@@ -49,42 +57,36 @@ export async function startPlan(formData: FormData) {
   if (!product || !product.active) fail(back, "This product is no longer available");
   if (product!.stock_qty < 1) fail(back, "This product is out of stock");
 
-  const deposit = cedisToPesewas(f.deposit);
-  const min = minDeposit(product!.price);
-  if (!(deposit >= min)) fail(back, `The first payment must be at least GHS ${(min / 100).toFixed(2)}`);
-  if (deposit > product!.price) fail(back, "The first payment is more than the price");
-
-  const { data: customer, error: custErr } = await db
-    .from("customers")
-    .upsert({ full_name: f.fullName, phone: phone!, email: f.email || null }, { onConflict: "phone" })
-    .select("id, email")
-    .single();
-  if (custErr) throw custErr;
+  // Existing customers keep the name they first gave; we never overwrite it from a public form.
+  const { data: existing } = await db.from("customers").select("id").eq("phone", phone!).maybeSingle();
+  let customerId = existing?.id as string | undefined;
+  if (!customerId) {
+    const { data: created, error } = await db
+      .from("customers")
+      .insert({ full_name: f.fullName, phone: phone!, email: f.email || null })
+      .select("id")
+      .single();
+    if (error) throw error;
+    customerId = created.id;
+  }
 
   const ref = newPlanRef();
   const { error: planErr } = await db.from("plans").insert({
     ref,
-    customer_id: customer.id,
+    customer_id: customerId,
     product_id: product!.id,
     price: product!.price,
     duration_months: f.months,
   });
   if (planErr) throw planErr;
-
-  const checkout = await initializeTransaction({
-    email: paystackEmail(customer.email, phone!),
-    amount: deposit,
-    reference: newPaymentRef(ref),
-    callbackUrl: `${siteUrl}/payment/callback`,
-    planRef: ref,
-  });
-  redirect(checkout.authorization_url);
+  redirect(`/plan/${ref}/pay`);
 }
 
 /** Customer tops up an existing plan with any amount ("small small"). */
 export async function payTowardsPlan(formData: FormData) {
   const ref = String(formData.get("ref") ?? "");
-  const back = `/plan/${ref}`;
+  // The first payment comes from step 3 of starting a plan; send errors back there.
+  const back = formData.get("step") === "first" ? `/plan/${ref}/pay` : `/plan/${ref}`;
   const db = supabaseAdmin();
   const { data: plan } = await db
     .from("plans")
@@ -97,8 +99,10 @@ export async function payTowardsPlan(formData: FormData) {
   const amount = cedisToPesewas(String(formData.get("amount") ?? ""));
   const owed = balance(plan!);
   const min = plan!.status === "pending_deposit" ? minDeposit(plan!.price) : Math.min(rules.minPayment, owed);
-  if (!(amount >= min)) fail(back, `The minimum payment is GHS ${(min / 100).toFixed(2)}`);
-  if (amount > owed) fail(back, `You only owe GHS ${(owed / 100).toFixed(2)}`);
+  if (!(amount >= min)) {
+    fail(back, plan!.status === "pending_deposit" ? `The first payment must be at least ${formatGHS(min)}` : `The minimum payment is ${formatGHS(min)}`);
+  }
+  if (amount > owed) fail(back, `You only owe ${formatGHS(owed)}`);
 
   const checkout = await initializeTransaction({
     email: paystackEmail(plan!.customers.email, plan!.customers.phone),

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600"><title>Sample: fridge, side</title>
+<ellipse cx="300" cy="560" rx="110" ry="12" fill="#1A1714" opacity=".12"/>
+<path d="M240 60 h120 a12 12 0 0 1 12 12 v476 h-144 V72 a12 12 0 0 1 12-12z" fill="#ECE6DD" stroke="#D9D1C4" stroke-width="3"/>
+<rect x="228" y="60" width="16" height="488" rx="4" fill="#fff" stroke="#D9D1C4" stroke-width="2"/>
+<rect x="214" y="100" width="12" height="70" rx="6" fill="#1A1714"/><rect x="214" y="260" width="12" height="130" rx="6" fill="#1A1714"/>
+<line x1="244" y1="214" x2="372" y2="214" stroke="#D9D1C4" stroke-width="3"/>
+<rect x="250" y="548" width="24" height="12" rx="3" fill="#1A1714"/><rect x="336" y="548" width="24" height="12" rx="3" fill="#1A1714"/>
+<text x="300" y="590" font-family="Inter,Arial" font-size="18" text-anchor="middle" fill="#8A8178">Side (sample drawing)</text></svg>

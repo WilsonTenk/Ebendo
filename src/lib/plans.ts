@@ -20,7 +20,13 @@ export type Plan = {
   collected_at: string | null;
   last_reminded_at: string | null;
   created_at: string;
+  ended_at: string | null;
+  ended_reason: "no_deposit" | "cancelled_by_customer" | "cancelled_by_staff" | "expired" | null;
+  credited_amount: number;
 };
+
+/** Plans that can still take money. */
+export const isOpen = (p: Pick<Plan, "status">) => p.status === "pending_deposit" || p.status === "active";
 
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no 0/O/1/I
 
@@ -67,6 +73,39 @@ export function expectedPaidBy(plan: Plan, now = new Date()): number {
   return Math.ceil(plan.price * frac);
 }
 
+export type RecordResult = { inserted: boolean; plan: Plan; credited: number; receipt_no?: string | null };
+
+/** Text the customer and keep a copy in the reminders log. Never throws. */
+export async function textCustomer(plan: Pick<Plan, "id" | "customer_id">, message: string) {
+  const db = supabaseAdmin();
+  const { data: c } = await db.from("customers").select("phone").eq("id", plan.customer_id).single();
+  if (!c) return;
+  const result = await sendSms(c.phone, message);
+  await db.from("reminders").insert({ plan_id: plan.id, channel: "sms", message, ok: result.ok, error: result.error ?? null });
+}
+
+/** The SMS receipt for any payment: online, cash at the shop, or store credit. */
+export function receiptMessage(r: RecordResult, amount: number, how: string): string {
+  const { plan, credited } = r;
+  if (credited > 0 && credited === amount) {
+    return `Ebendo: we received ${formatGHS(amount)} ${how}, but plan ${plan.ref} had already ended, so it is now store credit. Use it on any item: ${siteUrl}/credit`;
+  }
+  const extra = credited > 0 ? ` The extra ${formatGHS(credited)} is now your store credit.` : "";
+  const left = balance(plan);
+  return left === 0
+    ? `Ebendo: we received ${formatGHS(amount - credited)} ${how}. Plan ${plan.ref} is fully paid. Come to the shop on Graphic Road to collect your item.${extra} Thank you!`
+    : `Ebendo: we received ${formatGHS(amount)} ${how} for plan ${plan.ref}. Paid: ${formatGHS(plan.total_paid)}. Balance: ${formatGHS(left)}. Track or pay: ${siteUrl}/plan/${plan.ref}${extra}`;
+}
+
+/** Map a database error from the money functions to a sentence a person can read. */
+export function moneyError(e: { message?: string } | null | undefined, fallback = "Something went wrong. Nothing was charged."): string {
+  const m = e?.message ?? "";
+  for (const known of ["Not enough store credit", "That is more than the balance on this plan", "This plan is not accepting payments", "Amount must be more than zero"]) {
+    if (m.includes(known)) return known;
+  }
+  return fallback;
+}
+
 /**
  * Apply a verified, successful Paystack transaction to its plan (idempotent:
  * the webhook and the callback page may both call this for one payment).
@@ -76,8 +115,7 @@ export async function applyTransaction(tx: PaystackTransaction): Promise<Plan | 
   if (tx.status !== "success" || tx.currency !== "GHS") return null;
   const planRef = tx.metadata?.plan_ref;
   if (!planRef) return null;
-  const db = supabaseAdmin();
-  const { data, error } = await db.rpc("record_payment", {
+  const { data, error } = await supabaseAdmin().rpc("record_payment", {
     p_reference: tx.reference,
     p_plan_ref: planRef,
     p_amount: tx.amount,
@@ -85,25 +123,7 @@ export async function applyTransaction(tx: PaystackTransaction): Promise<Plan | 
     p_raw: tx,
   });
   if (error) throw error;
-  const { inserted, plan } = data as { inserted: boolean; plan: Plan };
-
-  if (inserted) {
-    const { data: c } = await db.from("customers").select("full_name, phone").eq("id", plan.customer_id).single();
-    if (c) {
-      const left = balance(plan);
-      const message =
-        left === 0
-          ? `Ebendo: we received ${formatGHS(tx.amount)}. Plan ${plan.ref} is fully paid. Come to the shop on Graphic Road to collect your item. Thank you!`
-          : `Ebendo: we received ${formatGHS(tx.amount)} for plan ${plan.ref}. Paid: ${formatGHS(plan.total_paid)}. Balance: ${formatGHS(left)}. Track or pay: ${siteUrl}/plan/${plan.ref}`;
-      const result = await sendSms(c.phone, message);
-      await db.from("reminders").insert({
-        plan_id: plan.id,
-        channel: "sms",
-        message,
-        ok: result.ok,
-        error: result.error ?? null,
-      });
-    }
-  }
-  return plan;
+  const result = data as RecordResult;
+  if (result.inserted) await textCustomer(result.plan, receiptMessage(result, tx.amount, "by " + (tx.channel === "card" ? "card" : "Mobile Money")));
+  return result.plan;
 }
